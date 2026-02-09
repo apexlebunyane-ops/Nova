@@ -2248,7 +2248,7 @@
             }
             
             .secure-title {
-                font-size: 24px;
+                font-size = 24px;
             }
             
             .secure-subtitle {
@@ -3376,6 +3376,19 @@
                 lastDailyIncomeDate: null
             };
             
+            // FIXED: Function to generate permanent invitation code
+            function generatePermanentInvitationCode(userId) {
+                // Create a unique code based on user ID and timestamp
+                // This ensures it's permanent and unique
+                const timestamp = Date.now().toString().slice(-6);
+                const userIdPart = userId ? userId.slice(-4) : Math.random().toString(36).substr(2, 4).toUpperCase();
+                const randomChars = Array.from({length: 3}, () => 
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+                ).join('');
+                
+                return `NOVA${timestamp}${userIdPart}${randomChars}`;
+            }
+            
             // Load data from Local Storage
             function loadUserDataFromLocalStorage(userId) {
                 try {
@@ -3386,9 +3399,11 @@
                         userData = { ...userData, ...savedData };
                     }
                     
-                    // Generate invitation code if not exists
+                    // FIXED: Generate permanent invitation code if not exists
                     if (!userData.invitationCode) {
-                        userData.invitationCode = generateInvitationCode();
+                        userData.invitationCode = generatePermanentInvitationCode(userId);
+                        // Save immediately
+                        saveUserDataToLocalStorage(userId);
                     }
                     
                     // Load packages
@@ -3447,7 +3462,7 @@
                         rewardPoints: userData.rewardPoints,
                         totalEarnings: userData.totalEarnings,
                         hasInvested: userData.hasInvested,
-                        invitationCode: userData.invitationCode,
+                        invitationCode: userData.invitationCode, // FIXED: Permanent code is saved
                         lastCheckin: userData.lastCheckin,
                         referredBy: userData.referredBy,
                         lastDailyIncomeDate: userData.lastDailyIncomeDate,
@@ -3615,7 +3630,7 @@
                     // Update nav
                     navItems.forEach(nav => nav.classList.remove('active'));
                     
-                    // Update invitation code display
+                    // FIXED: Update permanent invitation code display
                     document.getElementById('invitation-code').textContent = userData.invitationCode;
                     document.getElementById('invitation-link').textContent = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
                 });
@@ -3819,9 +3834,9 @@
                     this.reset();
                 });
                 
-                // Customer Service - UPDATED WHATSAPP NUMBER
+                // Customer Service - UPDATED WHATSAPP NUMBER: 0733173361
                 document.getElementById('support-btn').addEventListener('click', function() {
-                    window.open('https://wa.me/27686891353', '_blank');
+                    window.open('https://wa.me/27733173361', '_blank');
                 });
                 
                 // Transaction Records
@@ -4557,7 +4572,7 @@
                 document.getElementById('unactivated-members').textContent = userData.team.unactivatedMembers;
                 document.getElementById('total-commission').textContent = `R${userData.team.totalCommission}`;
                 
-                // Update invitation code in UI
+                // FIXED: Update permanent invitation code in UI
                 document.getElementById('invitation-code').textContent = userData.invitationCode;
                 document.getElementById('invitation-link').textContent = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
                 
@@ -4630,16 +4645,6 @@
                         teamList.appendChild(memberElement);
                     });
                 }
-            }
-            
-            // Function to generate unique invitation code
-            function generateInvitationCode() {
-                const prefix = 'NOVA';
-                const randomNum = Math.floor(1000 + Math.random() * 9000);
-                const randomChars = Array.from({length: 3}, () => 
-                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
-                ).join('');
-                return `${prefix}${randomNum}${randomChars}`;
             }
             
             // Function to record referral when a new user signs up
@@ -5075,8 +5080,8 @@
                         userData.fullName = fullName;
                         userData.phone = '+27' + phone;
                         
-                        // Generate unique invitation code
-                        userData.invitationCode = generateInvitationCode();
+                        // FIXED: Generate permanent invitation code based on user ID
+                        userData.invitationCode = generatePermanentInvitationCode(user.uid);
                         
                         // Record referral if applicable
                         if (referralCode) {
@@ -5215,14 +5220,17 @@
                 }
             }
             
-            // Function to generate unique invitation code
-            function generateInvitationCode() {
-                const prefix = 'NOVA';
-                const randomNum = Math.floor(1000 + Math.random() * 9000);
+            // FIXED: Function to generate permanent invitation code
+            function generatePermanentInvitationCode(userId) {
+                // Create a unique code based on user ID and timestamp
+                // This ensures it's permanent and unique
+                const timestamp = Date.now().toString().slice(-6);
+                const userIdPart = userId ? userId.slice(-4) : Math.random().toString(36).substr(2, 4).toUpperCase();
                 const randomChars = Array.from({length: 3}, () => 
                     String.fromCharCode(65 + Math.floor(Math.random() * 26))
                 ).join('');
-                return `${prefix}${randomNum}${randomChars}`;
+                
+                return `NOVA${timestamp}${userIdPart}${randomChars}`;
             }
             
             // Function to record referral when a new user signs up
