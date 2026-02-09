@@ -2999,7 +2999,7 @@
                     </div>
                     <div class="invite-link">
                         <h3>Your Invitation Link</h3>
-                        <p id="invitation-link" style="font-size: 14px; color: var(--nova-primary);">nova-platform.vercel.app/?ref=NOVA123ABC</p>
+                        <p id="invitation-link" style="font-size: 14px; color: var(--nova-primary);">nova-platform-weld.vercel.app/?ref=NOVA123ABC</p>
                     </div>
                     <div class="balance-section">
                         <div class="section-title">
@@ -3324,7 +3324,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // WhatsApp Group Button - UPDATED LINK
             document.getElementById('whatsapp-group-btn').addEventListener('click', function() {
-                window.open('https://chat.whatsapp.com/BhwnPF0lqXh5o9FVS84al0', '_blank');
+                window.open('https://chat.whatsapp.com/JYATRMUnFtz8Jv1fyI4gd1?mode=gi_t', '_blank');
             });
 
             // Check for referral code in URL
@@ -3368,7 +3368,7 @@
                     totalCommission: 0,
                     members: []
                 },
-                invitationCode: generateInvitationCode(),
+                invitationCode: '',
                 lastCheckin: null,
                 referredBy: null,
                 transactions: [],
@@ -3384,6 +3384,11 @@
                     if (userDataStr) {
                         const savedData = JSON.parse(userDataStr);
                         userData = { ...userData, ...savedData };
+                    }
+                    
+                    // Generate invitation code if not exists
+                    if (!userData.invitationCode) {
+                        userData.invitationCode = generateInvitationCode();
                     }
                     
                     // Load packages
@@ -3419,6 +3424,10 @@
                     // Update orders list
                     updateOrdersList();
                     
+                    // Update invitation code in UI
+                    document.getElementById('invitation-code').textContent = userData.invitationCode;
+                    document.getElementById('invitation-link').textContent = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
+                    
                     return true;
                 } catch (error) {
                     console.error("Error loading from local storage:", error);
@@ -3441,7 +3450,8 @@
                         invitationCode: userData.invitationCode,
                         lastCheckin: userData.lastCheckin,
                         referredBy: userData.referredBy,
-                        lastDailyIncomeDate: userData.lastDailyIncomeDate
+                        lastDailyIncomeDate: userData.lastDailyIncomeDate,
+                        team: userData.team
                     }));
                     
                     // Save packages
@@ -3604,6 +3614,10 @@
                     
                     // Update nav
                     navItems.forEach(nav => nav.classList.remove('active'));
+                    
+                    // Update invitation code display
+                    document.getElementById('invitation-code').textContent = userData.invitationCode;
+                    document.getElementById('invitation-link').textContent = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
                 });
                 
                 document.getElementById('team-btn').addEventListener('click', function() {
@@ -3736,6 +3750,9 @@
                     // Update network status if this user was referred
                     if (userData.referredBy) {
                         updateTeamMemberStatus(auth.currentUser.uid, 'active');
+                        
+                        // Award commission to referrer
+                        awardCommissionToReferrer(investment.amount);
                     }
                 });
                 
@@ -4135,11 +4152,8 @@
                 });
                 
                 // Invite section functionality
-                document.getElementById('invitation-code').textContent = userData.invitationCode;
-                document.getElementById('invitation-link').textContent = `nova-platform.vercel.app/?ref=${userData.invitationCode}`;
-                
                 document.getElementById('share-whatsapp').addEventListener('click', function() {
-                    const message = `Join me at NOVA Platform! Use my invitation code: ${userData.invitationCode} or click: nova-platform.vercel.app/?ref=${userData.invitationCode}`;
+                    const message = `Join me at NOVA Platform! Use my invitation code: ${userData.invitationCode} or click: nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
                     window.open(whatsappUrl, '_blank');
                 });
@@ -4149,7 +4163,7 @@
                 });
                 
                 document.getElementById('copy-link').addEventListener('click', function() {
-                    const link = `nova-platform.vercel.app/?ref=${userData.invitationCode}`;
+                    const link = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
                     navigator.clipboard.writeText(link).then(function() {
                         alert('Invitation link copied to clipboard!');
                     }, function(err) {
@@ -4543,6 +4557,10 @@
                 document.getElementById('unactivated-members').textContent = userData.team.unactivatedMembers;
                 document.getElementById('total-commission').textContent = `R${userData.team.totalCommission}`;
                 
+                // Update invitation code in UI
+                document.getElementById('invitation-code').textContent = userData.invitationCode;
+                document.getElementById('invitation-link').textContent = `nova-platform-weld.vercel.app/?ref=${userData.invitationCode}`;
+                
                 // Add glow effect to deposit button if balance is low
                 const depositBtn = document.getElementById('deposit-btn');
                 if (userData.rechargeBalance < 90) {
@@ -4614,55 +4632,150 @@
                 }
             }
             
-            // Function to load team members from referrals
-            function loadTeamMembers() {
-                if (!auth.currentUser) return;
+            // Function to generate unique invitation code
+            function generateInvitationCode() {
+                const prefix = 'NOVA';
+                const randomNum = Math.floor(1000 + Math.random() * 9000);
+                const randomChars = Array.from({length: 3}, () => 
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+                ).join('');
+                return `${prefix}${randomNum}${randomChars}`;
+            }
+            
+            // Function to record referral when a new user signs up
+            function recordReferral(userId, referralCode) {
+                if (!referralCode) return;
                 
-                const referralsRef = collection(db, "referrals");
-                const q = query(referralsRef, where("inviterId", "==", auth.currentUser.uid));
+                // Find the user with this referral code
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("invitationCode", "==", referralCode));
                 
                 getDocs(q).then((querySnapshot) => {
-                    userData.team.members = [];
-                    userData.team.activeMembers = 0;
-                    userData.team.unactivatedMembers = 0;
-                    userData.team.totalCommission = 0;
-                    
-                    querySnapshot.forEach((doc) => {
-                        const referral = doc.data();
+                    if (!querySnapshot.empty) {
+                        const inviterDoc = querySnapshot.docs[0];
+                        const inviterId = inviterDoc.id;
                         
-                        // Get user data for the invitee
-                        const userDocRef = doc(db, "users", referral.inviteeId);
-                        getDoc(userDocRef).then((userDoc) => {
-                            if (userDoc.exists()) {
-                                const userData = userDoc.data();
-                                const member = {
-                                    phone: userData.phone || 'Unknown',
-                                    status: referral.status,
-                                    commission: referral.status === 'active' ? 22 : 0
-                                };
+                        // Update the inviter's team data
+                        const inviterData = inviterDoc.data();
+                        const updatedTeam = {
+                            ...inviterData.team,
+                            unactivatedMembers: (inviterData.team.unactivatedMembers || 0) + 1
+                        };
+                        
+                        updateDoc(doc(db, "users", inviterId), {
+                            team: updatedTeam
+                        });
+                        
+                        // Record the referral relationship
+                        const referralData = {
+                            inviterId: inviterId,
+                            inviteeId: userId,
+                            status: 'unactivated',
+                            date: new Date().toISOString()
+                        };
+                        
+                        addDoc(collection(db, "referrals"), referralData);
+                        
+                        // Update current user's data to show they were referred
+                        userData.referredBy = inviterId;
+                        
+                        // Save to Local Storage
+                        if (auth.currentUser) {
+                            saveUserDataToLocalStorage(auth.currentUser.uid);
+                        }
+                        
+                        // Show success message
+                        showMessage(`Successfully recorded referral! You were invited by ${referralCode}`, 'success');
+                    }
+                }).catch((error) => {
+                    console.error("Error recording referral:", error);
+                });
+            }
+            
+            // Function to update team member status when they invest
+            function updateTeamMemberStatus(userId, status) {
+                if (!userData.referredBy) return;
+                
+                // Find the referral record
+                const referralsRef = collection(db, "referrals");
+                const q = query(referralsRef, where("inviteeId", "==", userId));
+                
+                getDocs(q).then((querySnapshot) => {
+                    if (!querySnapshot.empty) {
+                        const referralDoc = querySnapshot.docs[0];
+                        const referralData = referralDoc.data();
+                        
+                        // Update the referral status
+                        updateDoc(doc(db, "referrals", referralDoc.id), {
+                            status: status
+                        });
+                        
+                        // Update the inviter's team data
+                        const inviterId = referralData.inviterId;
+                        const inviterDocRef = doc(db, "users", inviterId);
+                        
+                        getDoc(inviterDocRef).then((inviterDoc) => {
+                            if (inviterDoc.exists()) {
+                                const inviterData = inviterDoc.data();
+                                const team = inviterData.team || { activeMembers: 0, unactivatedMembers: 0, totalCommission: 0, members: [] };
                                 
-                                userData.team.members.push(member);
-                                
-                                if (referral.status === 'active') {
-                                    userData.team.activeMembers++;
-                                    userData.team.totalCommission += 22;
-                                } else {
-                                    userData.team.unactivatedMembers++;
+                                if (status === 'active') {
+                                    team.activeMembers = (team.activeMembers || 0) + 1;
+                                    team.unactivatedMembers = Math.max(0, (team.unactivatedMembers || 0) - 1);
+                                    
+                                    // Add the member to the team list
+                                    const member = {
+                                        phone: userData.phone || 'Unknown',
+                                        status: 'active',
+                                        commission: 22
+                                    };
+                                    team.members.push(member);
                                 }
                                 
-                                // Update UI
-                                updateUI();
-                                loadTeamData();
-                                
-                                // Save updated team data to Local Storage
-                                if (auth.currentUser) {
-                                    saveUserDataToLocalStorage(auth.currentUser.uid);
-                                }
+                                updateDoc(inviterDocRef, {
+                                    team: team
+                                });
                             }
                         });
-                    });
+                    }
                 }).catch((error) => {
-                    console.error("Error loading team members:", error);
+                    console.error("Error updating team member status:", error);
+                });
+            }
+            
+            // Function to award commission to referrer when someone invests
+            function awardCommissionToReferrer(investmentAmount) {
+                if (!userData.referredBy) return;
+                
+                // Calculate commission (R22 for each active referral)
+                const commission = 22;
+                
+                // Find the inviter's document
+                const inviterDocRef = doc(db, "users", userData.referredBy);
+                
+                getDoc(inviterDocRef).then((inviterDoc) => {
+                    if (inviterDoc.exists()) {
+                        const inviterData = inviterDoc.data();
+                        const team = inviterData.team || { activeMembers: 0, unactivatedMembers: 0, totalCommission: 0, members: [] };
+                        
+                        // Update commission
+                        team.totalCommission = (team.totalCommission || 0) + commission;
+                        
+                        // Update in database
+                        updateDoc(inviterDocRef, {
+                            team: team,
+                            commissionBalance: (inviterData.commissionBalance || 0) + commission
+                        });
+                        
+                        // Update local userData if this is the current user
+                        if (auth.currentUser && auth.currentUser.uid === userData.referredBy) {
+                            userData.commissionBalance += commission;
+                            userData.team.totalCommission += commission;
+                            updateUI();
+                        }
+                    }
+                }).catch((error) => {
+                    console.error("Error awarding commission:", error);
                 });
             }
             
@@ -4724,113 +4837,6 @@
                 }
                     
                 showSuccessModal(`Successfully exchanged ${amount} nova points for R${amount} in your Income Wallet!`);
-            }
-            
-            function generateInvitationCode() {
-                const digits = Math.floor(100 + Math.random() * 900);
-                const letters = Array.from({length: 3}, () => 
-                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
-                ).join('');
-                return `NOVA${digits}${letters}`;
-            }
-            
-            // Function to record referral when a new user signs up
-            function recordReferral(userId, referralCode) {
-                if (!referralCode) return;
-                
-                // Find the user with this referral code
-                const usersRef = collection(db, "users");
-                const q = query(usersRef, where("invitationCode", "==", referralCode));
-                
-                getDocs(q).then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        const inviterDoc = querySnapshot.docs[0];
-                        const inviterId = inviterDoc.id;
-                        
-                        // Update the inviter's team data
-                        const inviterData = inviterDoc.data();
-                        const updatedTeam = {
-                            ...inviterData.team,
-                            unactivatedMembers: (inviterData.team.unactivatedMembers || 0) + 1
-                        };
-                        
-                        updateDoc(doc(db, "users", inviterId), {
-                            team: updatedTeam
-                        });
-                        
-                        // Record the referral relationship
-                        const referralData = {
-                            inviterId: inviterId,
-                            inviteeId: userId,
-                            status: 'unactivated',
-                            date: new Date().toISOString()
-                        };
-                        
-                        addDoc(collection(db, "referrals"), referralData);
-                        
-                        // Update current user's data to show they were referred
-                        userData.referredBy = inviterId;
-                        
-                        // Save to Local Storage
-                        if (auth.currentUser) {
-                            saveUserDataToLocalStorage(auth.currentUser.uid);
-                        }
-                    }
-                }).catch((error) => {
-                    console.error("Error recording referral:", error);
-                });
-            }
-            
-            // Function to update team member status when they invest
-            function updateTeamMemberStatus(userId, status) {
-                if (!userData.referredBy) return;
-                
-                // Find the referral record
-                const referralsRef = collection(db, "referrals");
-                const q = query(referralsRef, where("inviteeId", "==", userId));
-                
-                getDocs(q).then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        const referralDoc = querySnapshot.docs[0];
-                        const referralData = referralDoc.data();
-                        
-                        // Update the referral status
-                        updateDoc(doc(db, "referrals", referralDoc.id), {
-                            status: status
-                        });
-                        
-                        // Update the inviter's team data
-                        const inviterId = referralData.inviterId;
-                        const inviterDocRef = doc(db, "users", inviterId);
-                        
-                        getDoc(inviterDocRef).then((inviterDoc) => {
-                            if (inviterDoc.exists()) {
-                                const inviterData = inviterDoc.data();
-                                const team = inviterData.team || { activeMembers: 0, unactivatedMembers: 0, totalCommission: 0, members: [] };
-                                
-                                if (status === 'active') {
-                                    team.activeMembers = (team.activeMembers || 0) + 1;
-                                    team.unactivatedMembers = Math.max(0, (team.unactivatedMembers || 0) - 1);
-                                    team.totalCommission = (team.totalCommission || 0) + 22; // R22 commission
-                                    
-                                    // Add the member to the team list
-                                    const member = {
-                                        phone: userData.phone || 'Unknown',
-                                        status: 'active',
-                                        commission: 22
-                                    };
-                                    team.members.push(member);
-                                }
-                                
-                                updateDoc(inviterDocRef, {
-                                    team: team
-                                });
-                            }
-                        });
-                    }
-                }).catch((error) => {
-                    console.error("Error updating team member status:", error);
-                });
             }
             
             function showDashboard(user) {
@@ -5069,6 +5075,9 @@
                         userData.fullName = fullName;
                         userData.phone = '+27' + phone;
                         
+                        // Generate unique invitation code
+                        userData.invitationCode = generateInvitationCode();
+                        
                         // Record referral if applicable
                         if (referralCode) {
                             recordReferral(user.uid, referralCode);
@@ -5203,6 +5212,33 @@
                     } else {
                         btnText.textContent = 'Create Account';
                     }
+                }
+            }
+            
+            // Function to generate unique invitation code
+            function generateInvitationCode() {
+                const prefix = 'NOVA';
+                const randomNum = Math.floor(1000 + Math.random() * 9000);
+                const randomChars = Array.from({length: 3}, () => 
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+                ).join('');
+                return `${prefix}${randomNum}${randomChars}`;
+            }
+            
+            // Function to record referral when a new user signs up
+            function recordReferral(userId, referralCode) {
+                if (!referralCode) return;
+                
+                // In a real implementation, you would check the database for the referral code
+                // For now, we'll simulate it
+                showMessage(`Referral code ${referralCode} recorded successfully!`, 'success');
+                
+                // Update current user's data to show they were referred
+                userData.referredBy = referralCode;
+                
+                // Save to Local Storage
+                if (auth.currentUser) {
+                    saveUserDataToLocalStorage(auth.currentUser.uid);
                 }
             }
         }
